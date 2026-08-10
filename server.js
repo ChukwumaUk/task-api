@@ -4,6 +4,12 @@ const app = express();
 
 app.use(express.json());
 
+const swaggerUi = require("swagger-ui-express");
+const openapiSpec = require("./openapi.json");
+
+app.use("/docs", swaggerUi.serve, swaggerUi.setup(openapiSpec));
+
+
 let tasks = [
   { id: 1, title: "Learn HTTP", done: true },
   { id: 2, title: "Build a CRUD API", done: false },
@@ -28,7 +34,7 @@ app.get("/tasks/:id", (req, res) => {
   if (task) {
     res.json(task);
   } else {
-    res.status(404).send({ "error": `Task ${taskId} not found` });
+    res.status(404).json({ "error": `Task ${taskId} not found` });
   }
 });
 
@@ -41,12 +47,12 @@ app.post("/tasks", (req, res) => {
 
     const newTask = {
         id: Math.max(...tasks.map(t => t.id)) + 1,
-        title: title,
+        title: title.trim(),
         done: false
     };
 
     tasks.push(newTask);
-    res.status(201).json(newTask);
+    return res.status(201).json(newTask);
 });
 
 app.put("/tasks/:id", (req, res) => {
