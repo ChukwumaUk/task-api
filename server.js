@@ -49,6 +49,54 @@ app.post("/tasks", (req, res) => {
     res.status(201).json(newTask);
 });
 
+app.put("/tasks/:id", (req, res) => {
+    
+    const taskId = parseInt(req.params.id, 10);
+
+    if (isNaN(taskId)) {
+        return res.status(400).json({ "error": "Invalid task ID must be a number" });
+    }
+    const taskIndex = tasks.findIndex(t => t.id === taskId);
+
+    if (taskIndex === -1) {
+        return res.status(404).json({ "error": `Task ${taskId} not found` });
+    }
+
+    const {title, done} = req.body;
+
+    // Validate title if provided
+    if (title !== undefined && (typeof title !== "string" || title.trim() === "")) {
+        return res.status(400).json({ "error": "Title cannot be empty" });
+    }
+
+    // Validate done if provided
+    if (done !== undefined && typeof done !== "boolean") {
+        return res.status(400).json({ "error": "Done must be a boolean" });
+    }
+
+    // Explicitly update allowed fields while keeping the original ID intact
+    const updatedTask = {
+        ...tasks[taskIndex],
+        ...(title !== undefined && {title: title.trim()}),
+        ...(done !== undefined && {done: done})
+    };
+
+    tasks[taskIndex] = updatedTask;
+    return res.status(200).json(updatedTask);
+});
+
+app.delete("/tasks/:id", (req, res) => {
+    const taskId = parseInt(req.params.id);
+    const taskIndex = tasks.findIndex(t => t.id === taskId);
+
+    if (taskIndex === -1) {
+        return res.status(404).json({ "error": `Task ${taskId} not found` });
+    }
+
+    tasks.splice(taskIndex, 1);
+    return res.status(204).send();
+});
+
 app.listen(3000, () => {
   console.log('Server running on http://localhost:3000');
 });
