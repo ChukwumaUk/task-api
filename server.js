@@ -1,4 +1,26 @@
 const express = require('express');
+const Database = require("better-sqlite3");
+
+const db = new Database("tasks.db");
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS tasks (
+    id INTEGER PRIMARY KEY,
+    title TEXT NOT NULL,
+    done INTEGER NOT NULL DEFAULT 0
+  )
+`);
+
+const count = db.prepare("SELECT COUNT(*) AS count FROM tasks").get().count;
+
+if (count === 0) {
+  const insert = db.prepare("INSERT INTO tasks (title, done) VALUES (?, ?)");
+  insert.run("Learn HTTP", 1);
+  insert.run("Build a CRUD API", 0);
+  insert.run("Push to GitHub", 0);
+}
+
+console.log(db.prepare("SELECT * FROM tasks").all());
 
 const app = express();
 
@@ -10,11 +32,6 @@ const openapiSpec = require("./openapi.json");
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(openapiSpec));
 
 
-let tasks = [
-  { id: 1, title: "Learn HTTP", done: true },
-  { id: 2, title: "Build a CRUD API", done: false },
-  { id: 3, title: "Push to GitHub", done: false },
-];
 
 app.get('/', (req, res) => {
   res.json({ "name": "Task API", "version": "1.0", "endpoints": ["/tasks"] });
