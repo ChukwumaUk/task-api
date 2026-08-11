@@ -37,35 +37,23 @@ app.get("/tasks/:id", async (req, res) => {
   res.json(task);
 });
 
-app.post("/tasks", (req, res) => {
+app.post("/tasks", async (req, res) => {
   const title = req.body.title;
-
   if (!title || !title.trim()) {
     return res.status(400).json({ error: "Title is required" });
   }
-
-  const result = db
-    .prepare("INSERT INTO tasks (title, done) VALUES (?, ?)")
-    .run(title.trim(), 0);
-
-  const newTask = toTask(
-    db.prepare("SELECT * FROM tasks WHERE id = ?").get(result.lastInsertRowid)
-  );
-
+  const newTask = await db.createTask(title.trim());
   res.status(201).json(newTask);
 });
 
-app.put("/tasks/:id", (req, res) => {
-
+app.put("/tasks/:id", async (req, res) => {
   const taskId = parseInt(req.params.id, 10);
 
-  // 1. Does the task exist? (404 if not)
-  const existing = db.prepare("SELECT * FROM tasks WHERE id = ?").get(taskId);
+  const existing = await db.getTaskById(taskId);
   if (!existing) {
     return res.status(404).json({ error: `Task ${taskId} not found` });
   }
 
-  // 2. Validate the incoming fields (same rules as A1)
   const { title, done } = req.body;
   if (title !== undefined && (typeof title !== "string" || !title.trim())) {
     return res.status(400).json({ error: "Title cannot be empty" });
@@ -74,28 +62,21 @@ app.put("/tasks/:id", (req, res) => {
     return res.status(400).json({ error: "Done must be a boolean" });
   }
 
-  // 3. Merge: keep old values for anything the client didn't send
-  const newTitle = title !== undefined ? title.trim() : existing.title;
-  const newDone  = done  !== undefined ? (done ? 1 : 0) : existing.done;
+  const merged = {
+    title: title !== undefined ? title.trim() : existing.title,
+    done:  done  !== undefined ? done : existing.done,
+  };
 
-  // 4. Write the update
-  db.prepare("UPDATE tasks SET title = ?, done = ? WHERE id = ?")
-    .run(newTitle, newDone, taskId);
-
-  // 5. Return the updated row, converted
-  const updated = toTask(db.prepare("SELECT * FROM tasks WHERE id = ?").get(taskId));
+  const updated = await db.updateTask(taskId, merged);
   res.status(200).json(updated);
 });
 
-app.delete("/tasks/:id", (req, res) => {
+app.delete("/tasks/:id", async (req, res) => {
   const taskId = parseInt(req.params.id, 10);
-
-  const result = db.prepare("DELETE FROM tasks WHERE id = ?").run(taskId);
-
-  if (result.changes === 0) {
+  const deletedCount = await db.deleteTask(taskId);
+  if (deletedCount === 0) {
     return res.status(404).json({ error: `Task ${taskId} not found` });
   }
-
   res.status(204).send();
 });
 
