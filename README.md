@@ -1,9 +1,9 @@
 # Task API
 
-A small in-memory CRUD API for managing a to-do list, built with Node.js and Express.
-Part of the FlyRank Backend Track (Week 2, Assignment A1).
+A small CRUD API for managing a to-do list, built with Node.js and Express, backed by a SQLite database.
+Part of the FlyRank Backend Track (Week 2 A1 — build the API; Week 3 A2 — move storage to SQLite).
 
-> Note: tasks live in memory only — they reset to the 3 seed tasks every time the server restarts. No database yet (that's Week 3).
+> Note: tasks are stored in a SQLite file (`tasks.db`) and persist across server restarts. Earlier the data lived in an in-memory array and reset on every restart — Week 3 moved it to disk to fix exactly that.
 
 ## Install & run
 
@@ -74,18 +74,6 @@ Opened `tasks.db` in DB Browser and ran:
 
 ```sql
 UPDATE tasks SET done = 1;
-
-chukwumaukaha@Chukwumas-MacBook-Air task-api % curl -i http://localhost:3000/tasks
-HTTP/1.1 200 OK
-X-Powered-By: Express
-Content-Type: application/json; charset=utf-8
-Content-Length: 131
-ETag: W/"83-Z9+iKELprjJRCQd6DRcGi6dkiBg"
-Date: Tue, 11 Aug 2026 03:56:00 GMT
-Connection: keep-alive
-Keep-Alive: timeout=5
-
-[{"id":1,"title":"Learn HTTP","done":true},{"id":2,"title":"Build a REST API","done":true},{"id":4,"title":"Buy milk","done":true}]% 
 ```
 
 Then `GET /tasks` immediately returned every task as `"done": true` — with no server restart. The API and DB Browser read the same file, so there's one source of truth.
