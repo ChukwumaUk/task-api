@@ -1,18 +1,23 @@
 # Task API
 
-A small CRUD API for managing a to-do list, built with Node.js and Express, backed by a SQLite database.
-Part of the FlyRank Backend Track (Week 2 A1 — build the API; Week 3 A2 — move storage to SQLite).
+A CRUD to-do API built with Node.js and Express. Storage has evolved across three assignments — in-memory array (A1) → SQLite file (A2) → **PostgreSQL in Docker (A3)** — while the API's routes and responses stayed identical the whole way. Storage is an implementation detail behind a stable API.
 
-> Note: tasks are stored in a SQLite file (`tasks.db`) and persist across server restarts. Earlier the data lived in an in-memory array and reset on every restart — Week 3 moved it to disk to fix exactly that.
-
-## Install & run
+## Run it
 
 ```bash
-npm install      # install dependencies
-node server.js   # start the server on http://localhost:3000
+cp .env.example .env      # create your local env file
+docker compose up         # builds the app image, starts Postgres + API together
 ```
 
-Interactive docs (Swagger UI): http://localhost:3000/docs
+The API is at http://localhost:3000, Swagger docs at http://localhost:3000/docs.
+The `tasks` table is created and seeded automatically on first run.
+
+## Configuration
+Take a look at the .env.example file to understand how to connect to the database. The original .env file is git-ignored
+
+## Architecture
+
+All database access lives in one module, `db.js` (the repository). The routes in `server.js` contain no SQL — they call repository functions. Moving from SQLite to Postgres changed only `db.js`; `server.js` was untouched. That's the proof that storage is an implementation detail: the same routes, request shapes, and responses work across all three storage engines.
 
 ## Endpoints
 
@@ -29,13 +34,13 @@ Interactive docs (Swagger UI): http://localhost:3000/docs
 ## Example request
 
 ```
-% curl -i -X POST http://localhost:3000/tasks -H "Content-Type: application/json" -d '{"title":"Buy milk"}'
+chukwumaukaha@Chukwumas-MacBook-Air task-api % curl -i -X POST http://localhost:3000/tasks -H "Content-Type: application/json" -d '{"title":"Buy milk"}'
 HTTP/1.1 201 Created
 X-Powered-By: Express
 Content-Type: application/json; charset=utf-8
 Content-Length: 40
 ETag: W/"28-gPXr/tBcmKMXZwSEhav9o8e9gYc"
-Date: Mon, 10 Aug 2026 15:02:00 GMT
+Date: Tue, 11 Aug 2026 18:02:49 GMT
 Connection: keep-alive
 Keep-Alive: timeout=5
 
@@ -43,6 +48,11 @@ Keep-Alive: timeout=5
 
 ```
 
+## Data in Postgres
+
+Queried the running database container directly:
+
+![Tasks table in Postgres](postgres-data.png)
 
 ## Swagger UI
 
@@ -51,31 +61,5 @@ Keep-Alive: timeout=5
 ![POST /tasks Try it out returning 201](swagger2.png)
 
 
-## Why SQLite?
 
-It's a single file with zero setup — no separate database server to install or run — and unlike the in-memory array, the data survives restarts. Perfect for a small project or local development.
-
-## Where does the database live?
-
-The database lives in the tasks.db file, in the project root, created automatically on first run, and git-ignored so every clone starts fresh with its own copy and the three seed tasks.
-
-## How to run it:
-
-```bash
-npm install      # installs express, swagger-ui-express, AND better-sqlite3
-node server.js   # creates tasks.db (if missing), seeds it, starts on :3000
-```
-## A DB Browser screenshot
-![Tasks table in DB Browser](db-browser.png)
-
-## Exploring the database
-
-Opened `tasks.db` in DB Browser and ran:
-
-```sql
-UPDATE tasks SET done = 1;
-```
-
-Then `GET /tasks` immediately returned every task as `"done": true` — with no server restart. The API and DB Browser read the same file, so there's one source of truth.
-
-Because the API contract didn't change, moving from an in-memory array to SQLite produced byte-identical responses — GET /tasks returns the same body (same Content-Length, same ETag) as the in-memory version did. Identical responses passing the same tests is the proof that storage is just an implementation detail behind the API.
+Because the API contract never changed, each storage swap produced byte-identical responses — GET /tasks returns the same body (same Content-Length, same ETag) whether tasks live in memory, in SQLite, or in Postgres. Identical responses across three different storage engines are the proof that storage is just an implementation detail behind a stable API.
