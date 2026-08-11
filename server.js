@@ -83,51 +83,47 @@ app.post("/tasks", (req, res) => {
 });
 
 app.put("/tasks/:id", (req, res) => {
-    
-    const taskId = parseInt(req.params.id, 10);
 
-    if (isNaN(taskId)) {
-        return res.status(400).json({ "error": "Invalid task ID must be a number" });
-    }
-    const taskIndex = tasks.findIndex(t => t.id === taskId);
+  const taskId = parseInt(req.params.id, 10);
 
-    if (taskIndex === -1) {
-        return res.status(404).json({ "error": `Task ${taskId} not found` });
-    }
+  // 1. Does the task exist? (404 if not)
+  const existing = db.prepare("SELECT * FROM tasks WHERE id = ?").get(taskId);
+  if (!existing) {
+    return res.status(404).json({ error: `Task ${taskId} not found` });
+  }
 
-    const {title, done} = req.body;
+  // 2. Validate the incoming fields (same rules as A1)
+  const { title, done } = req.body;
+  if (title !== undefined && (typeof title !== "string" || !title.trim())) {
+    return res.status(400).json({ error: "Title cannot be empty" });
+  }
+  if (done !== undefined && typeof done !== "boolean") {
+    return res.status(400).json({ error: "Done must be a boolean" });
+  }
 
-    // Validate title if provided
-    if (title !== undefined && (typeof title !== "string" || title.trim() === "")) {
-        return res.status(400).json({ "error": "Title cannot be empty" });
-    }
+  // 3. Merge: keep old values for anything the client didn't send
+  const newTitle = title !== undefined ? title.trim() : existing.title;
+  const newDone  = done  !== undefined ? (done ? 1 : 0) : existing.done;
 
-    // Validate done if provided
-    if (done !== undefined && typeof done !== "boolean") {
-        return res.status(400).json({ "error": "Done must be a boolean" });
-    }
+  // 4. Write the update
+  db.prepare("UPDATE tasks SET title = ?, done = ? WHERE id = ?")
+    .run(newTitle, newDone, taskId);
 
-    // Explicitly update allowed fields while keeping the original ID intact
-    const updatedTask = {
-        ...tasks[taskIndex],
-        ...(title !== undefined && {title: title.trim()}),
-        ...(done !== undefined && {done: done})
-    };
-
-    tasks[taskIndex] = updatedTask;
-    return res.status(200).json(updatedTask);
+  // 5. Return the updated row, converted
+  const updated = toTask(db.prepare("SELECT * FROM tasks WHERE id = ?").get(taskId));
+  res.status(200).json(updated);
 });
 
 app.delete("/tasks/:id", (req, res) => {
-    const taskId = parseInt(req.params.id);
-    const taskIndex = tasks.findIndex(t => t.id === taskId);
+  const taskId = parseInt(req.params.id, 10);
 
-    if (taskIndex === -1) {
-        return res.status(404).json({ "error": `Task ${taskId} not found` });
-    }
+  const result = db.prepare("DELETE FROM tasks WHERE id = ?").run(taskId);
 
-    tasks.splice(taskIndex, 1);
-    return res.status(204).send();
+  if (result.changes === 0) {
+    return res.status(404).json({ error: `Task ${taskId} not found` });
+  }
+
+  res.status(204).send();
 });
 
 app.listen(3000, () => {
