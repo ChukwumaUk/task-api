@@ -60,6 +60,6 @@ Queried the running database container directly:
 
 ![POST /tasks Try it out returning 201](swagger2.png)
 
-
+## Why the API never changed
 
 Because the API contract never changed, each storage swap produced byte-identical responses — GET /tasks returns the same body (same Content-Length, same ETag) whether tasks live in memory, in SQLite, or in Postgres. Identical responses across three different storage engines are the proof that storage is just an implementation detail behind a stable API.
