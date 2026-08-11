@@ -65,20 +65,21 @@ app.get("/tasks/:id", (req, res) => {
 });
 
 app.post("/tasks", (req, res) => {
-    const title = req.body.title;
+  const title = req.body.title;
 
-    if (!title || title.trim() === "") {
-        return res.status(400).json({ "error": "Title is required" });
-    }
+  if (!title || !title.trim()) {
+    return res.status(400).json({ error: "Title is required" });
+  }
 
-    const newTask = {
-        id: Math.max(...tasks.map(t => t.id)) + 1,
-        title: title.trim(),
-        done: false
-    };
+  const result = db
+    .prepare("INSERT INTO tasks (title, done) VALUES (?, ?)")
+    .run(title.trim(), 0);
 
-    tasks.push(newTask);
-    return res.status(201).json(newTask);
+  const newTask = toTask(
+    db.prepare("SELECT * FROM tasks WHERE id = ?").get(result.lastInsertRowid)
+  );
+
+  res.status(201).json(newTask);
 });
 
 app.put("/tasks/:id", (req, res) => {
