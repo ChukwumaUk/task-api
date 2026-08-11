@@ -49,3 +49,45 @@ Keep-Alive: timeout=5
 ![Swagger UI showing POST request](swagger.png)
 
 ![POST /tasks Try it out returning 201](swagger2.png)
+
+
+## Why SQLite?
+
+It's a single file with zero setup — no separate database server to install or run — and unlike the in-memory array, the data survives restarts. Perfect for a small project or local development.
+
+## Where does the database live?
+
+The database lives in the tasks.db file, in the project root, created automatically on first run, and git-ignored so every clone starts fresh with its own copy and the three seed tasks.
+
+## How to run it:
+
+```bash
+npm install      # installs express, swagger-ui-express, AND better-sqlite3
+node server.js   # creates tasks.db (if missing), seeds it, starts on :3000
+```
+## A DB Browser screenshot
+![Tasks table in DB Browser](db-browser.png)
+
+## Exploring the database
+
+Opened `tasks.db` in DB Browser and ran:
+
+```sql
+UPDATE tasks SET done = 1;
+
+chukwumaukaha@Chukwumas-MacBook-Air task-api % curl -i http://localhost:3000/tasks
+HTTP/1.1 200 OK
+X-Powered-By: Express
+Content-Type: application/json; charset=utf-8
+Content-Length: 131
+ETag: W/"83-Z9+iKELprjJRCQd6DRcGi6dkiBg"
+Date: Tue, 11 Aug 2026 03:56:00 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+[{"id":1,"title":"Learn HTTP","done":true},{"id":2,"title":"Build a REST API","done":true},{"id":4,"title":"Buy milk","done":true}]% 
+```
+
+Then `GET /tasks` immediately returned every task as `"done": true` — with no server restart. The API and DB Browser read the same file, so there's one source of truth.
+
+Because the API contract didn't change, moving from an in-memory array to SQLite produced byte-identical responses — GET /tasks returns the same body (same Content-Length, same ETag) as the in-memory version did. Identical responses passing the same tests is the proof that storage is just an implementation detail behind the API.
