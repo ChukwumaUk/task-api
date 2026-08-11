@@ -22,6 +22,11 @@ if (count === 0) {
 
 console.log(db.prepare("SELECT * FROM tasks").all());
 
+function toTask(row) {
+  if (!row) return row;              // pass undefined straight through
+  return { ...row, done: Boolean(row.done) };
+}
+
 const app = express();
 
 app.use(express.json());
@@ -42,12 +47,16 @@ app.get("/health", (req, res) => {
 });
 
 app.get("/tasks", (req, res) => {
-  res.json(tasks);
+  const rows = db.prepare("SELECT * FROM tasks").all();
+
+  res.json(rows.map(toTask));
 });
 
 app.get("/tasks/:id", (req, res) => {
   const taskId = parseInt(req.params.id);
-  const task = tasks.find(t => t.id === taskId);
+  const row = db.prepare("SELECT * FROM tasks WHERE id = ?").get(taskId);
+  const task = toTask(row); // safe even if row is undefined
+
   if (task) {
     res.json(task);
   } else {
