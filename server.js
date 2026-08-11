@@ -1,31 +1,8 @@
 const express = require('express');
-const Database = require("better-sqlite3");
 
-const db = new Database("tasks.db");
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS tasks (
-    id INTEGER PRIMARY KEY,
-    title TEXT NOT NULL,
-    done INTEGER NOT NULL DEFAULT 0
-  )
-`);
+const db = require("./db");
 
-const count = db.prepare("SELECT COUNT(*) AS count FROM tasks").get().count;
-
-if (count === 0) {
-  const insert = db.prepare("INSERT INTO tasks (title, done) VALUES (?, ?)");
-  insert.run("Learn HTTP", 1);
-  insert.run("Build a CRUD API", 0);
-  insert.run("Push to GitHub", 0);
-}
-
-console.log(db.prepare("SELECT * FROM tasks").all());
-
-function toTask(row) {
-  if (!row) return row;              // pass undefined straight through
-  return { ...row, done: Boolean(row.done) };
-}
 
 const app = express();
 
@@ -46,22 +23,18 @@ app.get("/health", (req, res) => {
   res.json({ "status": "ok" });
 });
 
-app.get("/tasks", (req, res) => {
-  const rows = db.prepare("SELECT * FROM tasks").all();
-
-  res.json(rows.map(toTask));
+app.get("/tasks", async (req, res) => {
+  const tasks = await db.getAllTasks();
+  res.json(tasks);
 });
 
-app.get("/tasks/:id", (req, res) => {
-  const taskId = parseInt(req.params.id);
-  const row = db.prepare("SELECT * FROM tasks WHERE id = ?").get(taskId);
-  const task = toTask(row); // safe even if row is undefined
-
-  if (task) {
-    res.json(task);
-  } else {
-    res.status(404).json({ "error": `Task ${taskId} not found` });
+app.get("/tasks/:id", async (req, res) => {
+  const taskId = parseInt(req.params.id, 10);
+  const task = await db.getTaskById(taskId);
+  if (!task) {
+    return res.status(404).json({ error: `Task ${taskId} not found` });
   }
+  res.json(task);
 });
 
 app.post("/tasks", (req, res) => {
@@ -126,6 +99,11 @@ app.delete("/tasks/:id", (req, res) => {
   res.status(204).send();
 });
 
-app.listen(3000, () => {
-  console.log('Server running on http://localhost:3000');
-});
+db.init()
+  .then(() => {
+    app.listen(3000, () => console.log("Server running on http://localhost:3000"));
+  })
+  .catch((err) => {
+    console.error("Failed to initialize database:", err);
+    process.exit(1);
+  });
